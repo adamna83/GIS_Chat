@@ -145,10 +145,4 @@ src/
 
 ---
 
-## Roadmap
-
-- [ ] Phase 2: connect to the **AILA MCP** (`https://aila.my/mcp`) via a local OAuth
-      relay and publish the app to `<subdomain>.aila.my`
-- [ ] Symbology editor (per-category colors)
-- [ ] CSV/TXT with WKT geometry rows
-- [ ] KML export
+This is personal project - proof of concept

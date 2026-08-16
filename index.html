@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Map Assistant</title>
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <span class="brand-mark">&#9679;</span>
+        <span>AI&nbsp;Map&nbsp;Assistant</span>
+        <span class="badge">Beta</span>
+      </div>
+      <div class="topbar-right">
+        <label class="sel">
+          Basemap
+          <select id="basemapSelect"></select>
+        </label>
+        <button id="btnExport" class="btn primary" title="Export A4 layout (PDF / PNG)">&#128228; Export A4</button>
+        <button id="btnSettings" class="btn ghost" title="LLM settings">&#9881;</button>
+      </div>
+    </header>
+
+    <div id="content">
+      <aside id="sidePanel">
+        <div id="sideTabs">
+          <button class="side-tab active" data-tab="layers" title="Data layers">Layers</button>
+          <button class="side-tab" data-tab="import" title="Import files (SHP / KML / CSV / TXT)">Import</button>
+          <button class="side-tab" data-tab="measure" title="Measure distance in km">Measure</button>
+          <button class="side-tab" data-tab="draw" title="Draw point / polyline / polygon">Draw</button>
+          <button class="side-tab" data-tab="plot" title="Plot XY coordinates (DD or DMS)">Plot</button>
+        </div>
+        <div id="sideContent">
+          <div class="side-pane" data-pane="layers">
+            <div class="pane-head"><span>Data Layers</span></div>
+            <div id="layerList" class="pane-scroll"></div>
+          </div>
+          <div class="side-pane hidden" data-pane="import">
+            <div class="pane-head"><span>Import Files</span></div>
+            <div class="pane-body">
+              <label class="file-drop">
+                <input type="file" id="importInput" multiple accept=".shp,.dbf,.prj,.cpg,.zip,.kml,.kmz,.csv,.txt,.geojson,.json" />
+                <span>Choose file(s)&#8230;</span>
+              </label>
+              <p class="hint">Supported: <b>.shp</b> (pick .shp with its .dbf/.prj together, or a <b>.zip</b>), <b>.kml</b>, <b>.csv</b> / <b>.txt</b> (lon, lat columns), <b>.geojson</b></p>
+              <button id="btnImport" class="btn primary small">Import</button>
+              <p id="importStatus" class="muted"></p>
+            </div>
+          </div>
+          <div class="side-pane hidden" data-pane="measure">
+            <div class="pane-head"><span>Measure</span></div>
+            <div class="pane-body">
+              <button id="btnMeasureStart" class="btn small">Start measuring</button>
+              <button id="btnMeasureClear" class="btn small ghost">Clear</button>
+              <p id="measureResult" class="measure-result"></p>
+              <p class="hint">Click points on the map to trace a line. Distance is shown in kilometres. Double-click to finish.</p>
+            </div>
+          </div>
+          <div class="side-pane hidden" data-pane="draw">
+            <div class="pane-head"><span>Draw</span></div>
+            <div class="pane-body">
+              <div class="btn-row">
+                <button class="btn small" data-draw="point">Point</button>
+                <button class="btn small" data-draw="line">Polyline</button>
+                <button class="btn small" data-draw="polygon">Polygon</button>
+              </div>
+              <div class="btn-row">
+                <button id="btnDrawFinish" class="btn primary small">Finish</button>
+                <button id="btnDrawCancel" class="btn small ghost">Cancel</button>
+              </div>
+              <p id="drawStatus" class="muted"></p>
+              <p class="hint">Point: single click. Polyline / Polygon: click to add vertices, double-click or Finish to commit.</p>
+            </div>
+          </div>
+          <div class="side-pane hidden" data-pane="plot">
+            <div class="pane-head"><span>Plot XY</span></div>
+            <div class="pane-body">
+              <textarea id="plotInput" rows="8" placeholder="5.84, 118.12&#10;5\u00b050'24&quot;N 118\u00b007'12&quot;E&#10;6\u00b005'30&quot;N 117\u00b040'00&quot;E"></textarea>
+              <div class="check-row">
+                <label><input type="checkbox" id="plotLonFirst" /> Longitude first</label>
+              </div>
+              <button id="btnPlot" class="btn primary small">Plot points</button>
+              <p id="plotStatus" class="muted"></p>
+              <p class="hint">One coordinate per line. Decimal degrees (5.84, 118.12) or DMS (5&deg;50'24"N 118&deg;7'12"E) both work.</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div id="mapContainer"></div>
+
+      <aside id="chatPanel">
+        <div id="chatHead">
+          <span class="chat-title">Map Assistant</span>
+          <span id="chatStatus" class="dot"></span>
+        </div>
+        <div id="chatMessages"></div>
+        <div id="chatSuggestions">
+          <button class="chip">Zoom to Sandakan</button>
+          <button class="chip">Fetch the roads here</button>
+          <button class="chip">Digitize land use in this area</button>
+          <button class="chip">Switch to satellite basemap</button>
+          <button class="chip">Export an A4 portrait map</button>
+        </div>
+        <form id="chatForm">
+          <textarea id="chatInput" rows="1" placeholder="Ask the assistant to interact with the map\u2026" spellcheck="false"></textarea>
+          <button id="chatSend" type="submit" title="Send">&#10148;</button>
+        </form>
+      </aside>
+    </div>
+
+    <div id="statusbar"></div>
+
+    <div id="exportModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2>A4 Layout Export</h2>
+          <button id="btnExportClose" class="close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="export-form">
+            <label>Map Title <input id="expTitle" value="City Map" /></label>
+            <label>Orientation
+              <select id="expOrient">
+                <option value="portrait">A4 Portrait (210 x 297 mm)</option>
+                <option value="landscape">A4 Landscape (297 x 210 mm)</option>
+              </select>
+            </label>
+            <div class="row">
+              <label>DPI
+                <select id="expDpi">
+                  <option value="150">150</option>
+                  <option value="300" selected>300</option>
+                </select>
+              </label>
+              <label>Graticule interval
+                <select id="expGrid">
+                  <option value="auto" selected>Auto</option>
+                  <option value="0.001">0.001&deg;</option>
+                  <option value="0.005">0.005&deg;</option>
+                  <option value="0.01">0.01&deg;</option>
+                  <option value="0.02">0.02&deg;</option>
+                  <option value="0.05">0.05&deg;</option>
+                  <option value="0.1">0.1&deg;</option>
+                  <option value="0.5">0.5&deg;</option>
+                  <option value="1">1&deg;</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Legend <input type="checkbox" id="optLegend" checked /></label>
+              <label>Scale bar <input type="checkbox" id="optScale" checked /></label>
+              <label>North arrow <input type="checkbox" id="optNorth" checked /></label>
+              <label>Graticule <input type="checkbox" id="optGrid" checked /></label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button id="btnExportPng" class="btn">PNG</button>
+          <button id="btnExportPdf" class="btn primary">PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="settingsModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2>LLM Settings</h2>
+          <button id="btnSettingsClose" class="close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="hint">OpenAI-compatible endpoint with function/tool calling. Works with OpenRouter, Ollama, LM Studio, or any compatible gateway. Native OpenAI/Anthropic endpoints may block browser CORS &mdash; use a compatible gateway or a local model if that fails.</p>
+          <label>Base URL
+            <input id="setBase" placeholder="https://openrouter.ai/api/v1" />
+          </label>
+          <label>Model
+            <input id="setModel" placeholder="e.g. openai/gpt-4o-mini or llama3.1" />
+          </label>
+          <label>API Key
+            <input id="setKey" type="password" placeholder="sk-..." autocomplete="off" />
+          </label>
+          <div class="modal-foot" style="margin-top:14px;padding:0">
+            <button id="btnSettingsSave" class="btn primary">Save</button>
+            <button id="btnSettingsTest" class="btn">Test Connection</button>
+            <span id="settingsStatus" class="muted"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

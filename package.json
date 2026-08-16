@@ -1,0 +1,22 @@
+{
+  "name": "gis_chat",
+  "version": "1.0.0",
+  "description": "AI Map Assistant — MapLibre GL map viewer with an LLM-powered chatbot (Petronas theme)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@tmcw/togeojson": "^7.1.2",
+    "@turf/turf": "^7.3.5",
+    "jspdf": "^4.2.1",
+    "maplibre-gl": "^6.1.0",
+    "shpjs": "^6.2.0"
+  },
+  "devDependencies": {
+    "vite": "^8.2.0"
+  }
+}
